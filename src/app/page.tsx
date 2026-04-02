@@ -45,11 +45,12 @@ export default function Home() {
   }
 
   const sendWhatsApp = () => {
-    const phoneNumber = "916303044288" 
-    const cartText = cart.map(i => `• ${i.name} (SKU: ${i.sku}) — Qty: ${i.qty}`).join('%0A')
-    const message = `Hi BREKART, I'd like to order:%0A%0A${cartText}`
-    window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank')
-  }
+  const phoneNumber = "916303044288" 
+  const cartText = cart.map(i => `• ${i.name} (SKU: ${i.sku}) — Qty: ${i.qty}`).join('\n')
+  const message = `Hi BREKART, I'd like to order:\n\n${cartText}`
+  const encodedMessage = encodeURIComponent(message)
+  window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank')
+}
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white font-sans">
