@@ -11,61 +11,50 @@ export async function uploadToSupabase(formData: FormData) {
     const description = formData.get('description') as string
     const file = formData.get('image') as File
 
-    if (!file || file.size === 0) {
-      throw new Error("A valid image file is required.")
+    if (!file || file.size === 0) throw new Error("Image required")
+
+    // 1. CLEAN THE FOLDER NAME
+    // This part is likely where it was failing. 
+    // We ensure it's lowercase and has no spaces.
+    let folder = 'other' // Default
+    if (category && category.trim() !== '' && category !== 'All') {
+      folder = category.toLowerCase().trim().replace(/\s+/g, '-')
     }
 
-    // 1. SANITIZE FILENAME & FOLDER
-    // Remove special characters from filename that break URLs
+    // 2. CLEAN THE FILENAME
     const safeFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_')
-    
-    const folder = (category && category !== 'All') 
-      ? category.toLowerCase().replace(/\s+/g, '-') 
-      : 'other'
-
     const filePath = `${folder}/${Date.now()}-${safeFileName}`
 
-    // 2. UPLOAD TO SUPABASE STORAGE
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    // 3. UPLOAD TO SUPABASE
+    const { error: uploadError } = await supabase.storage
       .from('products') 
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      })
+      .upload(filePath, file)
 
-    if (uploadError) {
-      console.error('Storage Error:', uploadError.message)
-      throw new Error(`Storage Error: ${uploadError.message}`)
-    }
+    if (uploadError) throw new Error(`Storage: ${uploadError.message}`)
 
-    // 3. GET PUBLIC URL
+    // 4. GET PUBLIC URL
     const { data: { publicUrl } } = supabase.storage
       .from('products')
       .getPublicUrl(filePath)
 
-    // 4. SAVE TO DATABASE TABLE
+    // 5. SAVE TO DATABASE
     const { error: dbError } = await supabase
       .from('products')
       .insert([{ 
         name, 
         sku, 
-        category, 
+        category: category || 'Other', // Ensure DB gets a string
         description, 
         image_url: publicUrl 
       }])
 
-    if (dbError) {
-      console.error('Database Error:', dbError.message)
-      throw new Error(`Database Error: ${dbError.message}`)
-    }
+    if (dbError) throw new Error(`Database: ${dbError.message}`)
 
     revalidatePath('/')
     return { success: true }
 
   } catch (error: any) {
-    console.error('Server Action Error:', error.message)
-    // Throwing the error here allows the 'catch' block in your 
-    // PartUploadForm to display the message
-    throw new Error(error.message || "Failed to upload part")
+    console.error('SERVER_ERROR:', error.message)
+    throw new Error(error.message || "Failed to upload")
   }
 }
