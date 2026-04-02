@@ -13,22 +13,24 @@ export async function uploadToSupabase(formData: FormData) {
 
     if (!file || file.size === 0) throw new Error("Image required")
 
-    // 1. CLEAN THE FOLDER NAME
-    // This part is likely where it was failing. 
-    // We ensure it's lowercase and has no spaces.
-    let folder = 'other' // Default
+    // 1. FOLDER LOGIC (Lowercased for Storage path)
+    let folder = 'other'
     if (category && category.trim() !== '' && category !== 'All') {
       folder = category.toLowerCase().trim().replace(/\s+/g, '-')
     }
 
-    // 2. CLEAN THE FILENAME
+    // 2. FILENAME CLEANING
     const safeFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_')
     const filePath = `${folder}/${Date.now()}-${safeFileName}`
 
-    // 3. UPLOAD TO SUPABASE
+    // 3. UPLOAD TO SUPABASE WITH CONTENT-TYPE
+    // This ensures the browser knows it's an image (fixes the "not projecting" issue)
     const { error: uploadError } = await supabase.storage
       .from('products') 
-      .upload(filePath, file)
+      .upload(filePath, file, {
+        contentType: file.type, // CRITICAL: Ensures the file is stored as an image
+        upsert: false
+      })
 
     if (uploadError) throw new Error(`Storage: ${uploadError.message}`)
 
@@ -37,13 +39,16 @@ export async function uploadToSupabase(formData: FormData) {
       .from('products')
       .getPublicUrl(filePath)
 
-    // 5. SAVE TO DATABASE
+    // 5. SAVE TO DATABASE (Matches case-sensitive filters)
+    // We save as 'Other', 'Electronics', or 'Refrigeration' (Capitalized)
+    const dbCategory = category && category !== '' ? category : 'Other'
+
     const { error: dbError } = await supabase
       .from('products')
       .insert([{ 
         name, 
         sku, 
-        category: category || 'Other', // Ensure DB gets a string
+        category: dbCategory, 
         description, 
         image_url: publicUrl 
       }])
@@ -55,6 +60,7 @@ export async function uploadToSupabase(formData: FormData) {
 
   } catch (error: any) {
     console.error('SERVER_ERROR:', error.message)
+    // Throwing here allows the Admin Form to catch the specific error
     throw new Error(error.message || "Failed to upload")
   }
 }

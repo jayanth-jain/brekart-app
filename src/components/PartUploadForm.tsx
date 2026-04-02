@@ -16,10 +16,18 @@ export default function PartUploadForm() {
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    setMessage('')
-    const formData = new FormData(e.currentTarget)
+  e.preventDefault()
+  const formData = new FormData(e.currentTarget)
+  const file = formData.get('image') as File
+
+  // 1. ADD THIS SIZE CHECK
+  if (file && file.size > 4.5 * 1024 * 1024) {
+    alert("Image is too large! Please use an image smaller than 4.5MB.")
+    return
+  }
+
+  setLoading(true)
+  setMessage('')
     
     try {
       const result = await uploadToSupabase(formData)
