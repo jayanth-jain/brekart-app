@@ -12,20 +12,28 @@ export async function uploadToSupabase(formData: FormData) {
 
   if (!file) throw new Error("Image required")
 
-  // 1. Upload Image to Storage (Changed 'part-images' to 'products')
-  const fileName = `${Date.now()}-${file.name}`
+  // 1. DYNAMIC FOLDER LOGIC
+  // This ensures 'Electronics' goes to 'electronics/', 'Refrigeration' to 'refrigeration/'
+  // and everything else (or empty) goes to 'other/'
+  const folder = (category && category !== 'All') 
+    ? category.toLowerCase().replace(/\s+/g, '-') 
+    : 'other'
+
+  const filePath = `${folder}/${Date.now()}-${file.name}`
+
+  // 2. Upload Image to Storage using the filePath
   const { data: uploadData, error: uploadError } = await supabase.storage
     .from('products') 
-    .upload(fileName, file)
+    .upload(filePath, file)
 
   if (uploadError) throw uploadError
 
-  // 2. Get Public URL (Changed 'part-images' to 'products')
+  // 3. Get Public URL for the specific filePath
   const { data: { publicUrl } } = supabase.storage
     .from('products')
-    .getPublicUrl(fileName)
+    .getPublicUrl(filePath)
 
-  // 3. Save to Database Table
+  // 4. Save to Database Table
   const { error: dbError } = await supabase
     .from('products')
     .insert([{ 
@@ -38,7 +46,6 @@ export async function uploadToSupabase(formData: FormData) {
 
   if (dbError) throw dbError
 
-  // Refresh the home page to show the new part
   revalidatePath('/')
   return { success: true }
 }
