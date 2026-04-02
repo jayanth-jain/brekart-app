@@ -16,18 +16,18 @@ export default function PartUploadForm() {
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-  e.preventDefault()
-  const formData = new FormData(e.currentTarget)
-  const file = formData.get('image') as File
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    const file = formData.get('image') as File
 
-  // 1. ADD THIS SIZE CHECK
-  if (file && file.size > 4.5 * 1024 * 1024) {
-    alert("Image is too large! Please use an image smaller than 4.5MB.")
-    return
-  }
+    // 1. Vercel Serverless Function Size Limit Check (~4.5MB)
+    if (file && file.size > 4.5 * 1024 * 1024) {
+      alert("Image is too large! Please use an image smaller than 4.5MB.")
+      return
+    }
 
-  setLoading(true)
-  setMessage('')
+    setLoading(true)
+    setMessage('')
     
     try {
       const result = await uploadToSupabase(formData)
@@ -36,9 +36,10 @@ export default function PartUploadForm() {
         setFileName(null)
         ;(e.target as HTMLFormElement).reset()
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      setMessage('Error uploading part. Check console.')
+      // Display the actual error message from the server action if available
+      setMessage(err.message || 'Error uploading part. Check console.')
     } finally {
       setLoading(false)
     }
@@ -61,21 +62,28 @@ export default function PartUploadForm() {
       {/* Category Selection */}
       <div className="text-left">
         <label className="block text-sm font-medium text-slate-400 mb-2">Category</label>
-        <select 
-          name="category" 
-          required
-          className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 appearance-none cursor-pointer"
-        >
-          <option value="Refrigeration">Refrigeration</option>
-          <option value="Electronics">Electronics</option>
-          <option value="Other">Other</option>
-        </select>
+        <div className="relative">
+          <select 
+            name="category" 
+            required
+            className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 appearance-none cursor-pointer"
+          >
+            <option value="Refrigeration">Refrigeration</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Projects">Projects</option>
+            <option value="Other">Other</option>
+          </select>
+          {/* Custom arrow for the select box */}
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+            ▼
+          </div>
+        </div>
       </div>
 
       {/* Description */}
       <div className="text-left">
         <label className="block text-sm font-medium text-slate-400 mb-2">Description</label>
-        <textarea name="description" rows={3} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 resize-none" placeholder="Details about compatibility..." />
+        <textarea name="description" rows={3} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 resize-none" placeholder="Details about compatibility or project contents..." />
       </div>
 
       {/* Image Upload Area */}
@@ -115,10 +123,10 @@ export default function PartUploadForm() {
         {loading ? 'Adding to Inventory...' : 'Add Spare Part'}
       </button>
 
-      {/* Success Message */}
+      {/* Success/Error Message */}
       {message && (
-        <div className={`p-4 border rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 ${message.includes('Error') ? 'bg-red-900/20 border-red-800 text-red-400' : 'bg-blue-900/20 border-blue-800 text-blue-400'}`}>
-          {message.includes('Error') ? null : <CheckCircle2 size={18} />} 
+        <div className={`p-4 border rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 ${message.toLowerCase().includes('error') ? 'bg-red-900/20 border-red-800 text-red-400' : 'bg-blue-900/20 border-blue-800 text-blue-400'}`}>
+          {!message.toLowerCase().includes('error') && <CheckCircle2 size={18} />} 
           {message}
         </div>
       )}

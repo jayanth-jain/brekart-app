@@ -12,7 +12,8 @@ export default function Home() {
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [inputQuantities, setInputQuantities] = useState<{[key: string]: string}>({})
 
-  const categories = ['All', 'Refrigeration', 'Electronics', 'Other']
+  // Updated categories list to include Projects
+  const categories = ['All', 'Refrigeration', 'Electronics', 'Projects', 'Other']
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -21,6 +22,7 @@ export default function Home() {
         query = query.or(`name.ilike.%${searchTerm}%,sku.ilike.%${searchTerm}%`)
       }
       if (selectedCategory !== 'All') {
+        // ilike handles case-insensitivity (matches 'Projects' or 'projects')
         query = query.ilike('category', selectedCategory)
       }
       const { data } = await query.limit(50)
@@ -71,7 +73,7 @@ export default function Home() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
             <input 
               type="text" 
-              placeholder="Search spare parts..." 
+              placeholder="Search spare parts or projects..." 
               className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600 transition-all"
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -81,7 +83,7 @@ export default function Home() {
               <button 
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${selectedCategory === cat ? 'bg-blue-600 text-white' : 'bg-slate-900 text-slate-400 border border-slate-800'}`}
+                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${selectedCategory === cat ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-600'}`}
               >
                 {cat}
               </button>
@@ -91,33 +93,39 @@ export default function Home() {
 
         {/* Product Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map(product => (
-            <div key={product.id} className="bg-slate-900/50 border border-slate-800 rounded-3xl p-5 flex flex-col hover:border-blue-500/50 transition-all">
-              <div className="aspect-square bg-slate-950 rounded-2xl mb-4 flex items-center justify-center overflow-hidden">
-                <img src={product.image_url} alt={product.name} className="max-h-full max-w-full object-contain p-4 hover:scale-105 transition-transform" />
+          {products.length > 0 ? (
+            products.map(product => (
+              <div key={product.id} className="bg-slate-900/50 border border-slate-800 rounded-3xl p-5 flex flex-col hover:border-blue-500/50 transition-all group">
+                <div className="aspect-square bg-slate-950 rounded-2xl mb-4 flex items-center justify-center overflow-hidden">
+                  <img src={product.image_url} alt={product.name} className="max-h-full max-w-full object-contain p-4 group-hover:scale-105 transition-transform duration-500" />
+                </div>
+                <div className="flex-grow">
+                  <p className="text-blue-500 text-[10px] font-bold uppercase mb-1 tracking-widest">{product.category}</p>
+                  <h3 className="font-bold text-lg mb-4 line-clamp-2">{product.name}</h3>
+                </div>
+                <div className="flex gap-2 mt-auto pt-4 border-t border-slate-800">
+                  <input 
+                    type="number"
+                    min="1"
+                    placeholder="Qty"
+                    value={inputQuantities[product.id] || ''}
+                    onChange={(e) => setInputQuantities(prev => ({ ...prev, [product.id]: e.target.value }))}
+                    className="w-20 bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-center text-sm outline-none focus:border-blue-500"
+                  />
+                  <button 
+                    onClick={() => addToCart(product)} 
+                    className="flex-grow bg-blue-600 hover:bg-blue-700 p-3 rounded-xl flex justify-center items-center gap-2 font-bold transition-colors active:scale-95"
+                  >
+                    <Plus size={18} /> Add
+                  </button>
+                </div>
               </div>
-              <div className="flex-grow">
-                <p className="text-blue-500 text-[10px] font-bold uppercase mb-1">{product.category}</p>
-                <h3 className="font-bold text-lg mb-4 line-clamp-2">{product.name}</h3>
-              </div>
-              <div className="flex gap-2 mt-auto pt-4 border-t border-slate-800">
-                <input 
-                  type="number"
-                  min="1"
-                  placeholder="Qty"
-                  value={inputQuantities[product.id] || ''}
-                  onChange={(e) => setInputQuantities(prev => ({ ...prev, [product.id]: e.target.value }))}
-                  className="w-20 bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-center text-sm outline-none focus:border-blue-500"
-                />
-                <button 
-                  onClick={() => addToCart(product)} 
-                  className="flex-grow bg-blue-600 hover:bg-blue-700 p-3 rounded-xl flex justify-center items-center gap-2 font-bold transition-colors active:scale-95"
-                >
-                  <Plus size={18} /> Add
-                </button>
-              </div>
+            ))
+          ) : (
+            <div className="col-span-full py-20 text-center text-slate-500">
+              No items found in this category.
             </div>
-          ))}
+          )}
         </div>
       </main>
 
@@ -129,7 +137,7 @@ export default function Home() {
               <h2 className="text-2xl font-black italic">YOUR CART</h2>
               <button onClick={() => setIsCartOpen(false)} className="p-2 hover:bg-slate-800 rounded-full transition-colors"><X /></button>
             </div>
-            <div className="flex-grow overflow-y-auto space-y-4">
+            <div className="flex-grow overflow-y-auto space-y-4 pr-2 custom-scrollbar">
               {cart.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-600">
                    <ShoppingCart size={40} className="mb-2 opacity-20" />
@@ -137,11 +145,11 @@ export default function Home() {
                 </div>
               ) : (
                 cart.map(item => (
-                  <div key={item.id} className="flex gap-4 bg-slate-950/50 p-4 rounded-2xl border border-slate-800 relative">
-                    <img src={item.image_url} className="w-16 h-16 object-contain bg-white/5 rounded-lg" alt="" />
+                  <div key={item.id} className="flex gap-4 bg-slate-950/50 p-4 rounded-2xl border border-slate-800 relative group">
+                    <img src={item.image_url} className="w-16 h-16 object-contain bg-white/5 rounded-lg border border-white/5" alt="" />
                     <div className="flex-grow">
                       <p className="font-bold text-sm leading-tight pr-6">{item.name}</p>
-                      <p className="text-blue-500 font-mono text-xs mt-1">QTY: {item.qty}</p>
+                      <p className="text-blue-500 font-mono text-xs mt-1 bg-blue-900/20 w-fit px-2 py-0.5 rounded">QTY: {item.qty}</p>
                     </div>
                     <button 
                       onClick={() => setCart(prev => prev.filter(i => i.id !== item.id))} 
@@ -154,13 +162,16 @@ export default function Home() {
               )}
             </div>
             {cart.length > 0 && (
-              <div className="pt-6 border-t border-slate-800">
+              <div className="pt-6 border-t border-slate-800 space-y-3">
                 <button 
                   onClick={sendWhatsApp} 
                   className="w-full bg-green-600 hover:bg-green-700 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-green-900/20"
                 >
                   <MessageCircle size={20} /> Checkout to WhatsApp
                 </button>
+                <p className="text-[10px] text-center text-slate-500 px-4">
+                  Final order confirmation will be handled over WhatsApp.
+                </p>
               </div>
             )}
           </div>
